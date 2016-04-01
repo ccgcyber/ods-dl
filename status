@@ -1,0 +1,35 @@
+#This file will contain the last tested status of demo functions.  
+#Please update as you use this demo and commit your changes with 
+#bzr to keep it up-to-date for all. This file wil be scraped and 
+#data imported into reporting sheets. Stick with the format below 
+#and refrain from any "colorful" commentary.
+
+
+#Format
+#Demo:name of demo i.e ... kubernates
+#Complete = yes or no  (every demo needs to have a minimum of a README and a 01-deploy.sh)
+#DateOfTest = DDMMYEAR   (day month year)
+#TestedBy = FirstnameLastInitial
+#InfrastructureStatus = pass or fail
+#PostDeployStatus = pass or fail
+#History = free form notes to share about the demo, Think wether it should go here or be an official part of the readme, an example of things go here would be specific items about your particular deployment like "intermittent failures with error xxx" Please prepend your comment with the date and your initials. Newest comment at the top.  
+
+#EXAMPLE
+#Demo:kubernates
+#Complete:yes
+#DateOfTest:08112015
+#TestedBy:DougS
+#InfrastructureStatus:pass
+#PostDeployStatus:pass
+#History:
+#08112015DSS initial creation of status file  test of demo, commited changes to 01-deploy
+
+
+#####################################################################
+Demo: Deep Learning
+Complete: no
+DateOfTest: 20160401
+TestedBy: Samuel Cozannet
+InfrastructureStatus: AWS OK
+PostDeployStatus: AWS OK
+History: first deployment

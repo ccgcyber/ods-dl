@@ -1,0 +1,30 @@
+#####################################################################
+#
+# Global Configuration for DPCS stack
+#
+# Notes: 
+# 
+# Maintainer: Samuel Cozannet <samuel.cozannet@canonical.com> 
+#
+#####################################################################
+
+# Cloud: set to aws, azure or local for local laptop deployment. Defaults to AWS. 
+CLOUD_ID=aws
+
+# Project Settings: Enter the name of your Juju cloud settings here
+PROJECT_ID=ml
+
+# Logging Settings: these are the settings for the deployment scripts
+FACILITY="local0"
+LOGTAG="dpcs"
+MIN_LOG_LEVEL="debug"
+
+# Temporary files list
+TMP_FILES="tmp/dpcs"
+
+# Log Storage in GB
+LOG_STORAGE=200
+
+# Use GPU machines (0 or 1, defaults to 0)
+# For now, Azure doesn't yet have the GPU instances so can't have ENABLE_GPU=1
+ENABLE_GPU=0
