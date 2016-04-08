@@ -89,6 +89,21 @@ Edit ./etc/project.conf to change:
 
 Will set up the environment, which essentially means setting up the cloud environment and installing the first machine. 
 
+An example of logs from that would be : 
+
+    Sourcing ./ods/bin/../etc/project.conf
+    Sourcing ./ods/bin/../lib/00_bashlib.sh
+    Sourcing ./ods/bin/../lib/dockerlib.sh
+    Sourcing ./ods/bin/../lib/gcelib.sh
+    Sourcing ./ods/bin/../lib/jujulib.sh
+    [mar abr 5 23:06:38 CEST 2016] [ods] [local0.debug] : Validating dependencies
+    [mar abr 5 23:06:40 CEST 2016] [ods] [local0.debug] : Successfully switched to dl
+    [mar abr 5 23:13:21 CEST 2016] [ods] [local0.debug] : Succesfully bootstrapped dl
+    [mar abr 5 23:13:42 CEST 2016] [ods] [local0.debug] : Successfully deployed juju-gui to machine-0
+    [mar abr 5 23:13:44 CEST 2016] [ods] [local0.info] : Juju GUI now available on https://X.X.X.X with user admin:password
+    [mar abr 5 23:13:44 CEST 2016] [ods] [local0.debug] : Bootstrapping process finished for dl. You can safely move to deployment.
+
+
 ## Deploying  
 
 	./bin/01-deploy.sh
@@ -97,7 +112,35 @@ Will deploy the charms required for the project:
 
 * Hadoop (Master, 3x Slave, YARN Master)
 * Spark 
-* Zeppelin & iPython Notebook
+
+Example logs: 
+
+    Sourcing ./ods/bin/../etc/project.conf
+    Sourcing ./ods/bin/../lib/00_bashlib.sh
+    Sourcing ./ods/bin/../lib/dockerlib.sh
+    Sourcing ./ods/bin/../lib/gcelib.sh
+    Sourcing ./ods/bin/../lib/jujulib.sh
+    [mar abr 5 23:14:05 CEST 2016] [ods] [local0.debug] : Validating dependencies
+    [mar abr 5 23:14:07 CEST 2016] [ods] [local0.debug] : Successfully switched to dl
+    [mar abr 5 23:14:07 CEST 2016] [ods] [local0.info] : Using GPU for this deployment
+    [mar abr 5 23:14:07 CEST 2016] [ods] [local0.info] : Using constraints instance-type=g2.2xlarge root-disk=64G for this deployment
+    [mar abr 5 23:14:26 CEST 2016] [ods] [local0.debug] : Successfully deployed namenode
+    [mar abr 5 23:14:31 CEST 2016] [ods] [local0.debug] : Successfully set constraints "mem=4G cpu-cores=2 root-disk=32G" for namenode
+    [mar abr 5 23:14:59 CEST 2016] [ods] [local0.debug] : Successfully deployed resourcemanager
+    [mar abr 5 23:15:04 CEST 2016] [ods] [local0.debug] : Successfully set constraints "mem=2G cpu-cores=2" for resourcemanager
+    [mar abr 5 23:15:29 CEST 2016] [ods] [local0.debug] : Successfully deployed slave
+    [mar abr 5 23:15:35 CEST 2016] [ods] [local0.debug] : Successfully set constraints "instance-type=g2.2xlarge root-disk=64G" for slave
+    [mar abr 5 23:16:00 CEST 2016] [ods] [local0.debug] : Successfully added 2 units of slave
+    [mar abr 5 23:16:10 CEST 2016] [ods] [local0.debug] : Successfully deployed plugin
+    [mar abr 5 23:16:13 CEST 2016] [ods] [local0.debug] : Successfully created relation between resourcemanager and namenode
+    [mar abr 5 23:16:15 CEST 2016] [ods] [local0.debug] : Successfully created relation between slave and resourcemanager
+    [mar abr 5 23:16:19 CEST 2016] [ods] [local0.debug] : Successfully created relation between slave and namenode
+    [mar abr 5 23:16:22 CEST 2016] [ods] [local0.debug] : Successfully created relation between plugin and resourcemanager
+    [mar abr 5 23:16:24 CEST 2016] [ods] [local0.debug] : Successfully created relation between plugin and namenode
+    [mar abr 5 23:16:43 CEST 2016] [ods] [local0.debug] : Successfully deployed spark
+    [mar abr 5 23:16:47 CEST 2016] [ods] [local0.debug] : Successfully set constraints "mem=2G cpu-cores=2" for spark
+    [mar abr 5 23:16:49 CEST 2016] [ods] [local0.debug] : Successfully created relation between spark and plugin
+
 
 ## Configure  
 

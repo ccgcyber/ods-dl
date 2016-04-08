@@ -66,6 +66,16 @@ esac
 
 #####################################################################
 #
+# Prepare for GPU
+#
+#####################################################################
+
+juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
+	bash::lib::log info Successfully added CUDA to the environment || \
+	bash::lib::die Could not add CUDA. Please build the charm locally. 
+
+#####################################################################
+#
 # Deploy Apache Hadoop
 #
 #####################################################################
