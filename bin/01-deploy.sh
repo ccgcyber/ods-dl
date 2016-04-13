@@ -64,39 +64,36 @@ case "${ENABLE_GPU}" in
 	;;
 esac
 
-# #####################################################################
-# #
-# # Prepare for GPU
-# #
-# #####################################################################
+#####################################################################
+#
+# Prepare for GPU
+#
+#####################################################################
 
-# juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
-# 	bash::lib::log info Successfully added CUDA to the environment || \
-# 	bash::lib::die Could not add CUDA. Please build the charm locally. 
+juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
+	bash::lib::log info Successfully added CUDA to the environment || \
+	bash::lib::die Could not add CUDA. Please build the charm locally. 
 
-# #####################################################################
-# #
-# # Deploy Apache Hadoop
-# #
-# #####################################################################
-# ## Deploy HDFS Master
-# juju::lib::deploy cs:trusty/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
+#####################################################################
+#
+# Deploy Apache Hadoop
+#
+#####################################################################
+## Deploy HDFS Master
+juju::lib::deploy cs:trusty/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
 
 
-# ## Deploy Compute slaves
-# juju::lib::deploy cs:trusty/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
+## Deploy Compute slaves
+juju::lib::deploy cs:trusty/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
 
-# juju::lib::add_unit slave 2
+juju::lib::add_unit slave 2
 
-# ## Deploy Hadoop Plugin
-# juju::lib::deploy cs:trusty/apache-hadoop-plugin-13 plugin
+## Deploy Hadoop Plugin
+juju::lib::deploy cs:trusty/apache-hadoop-plugin-13 plugin
 
-# ## Manage Relations
-# juju::lib::add_relation slave namenode
-# juju::lib::add_relation plugin namenode
-
-# # # Need to add a timer for that to make sure Hadoop is done when rebooting
-# # juju::lib::add_relation cuda slave
+## Manage Relations
+juju::lib::add_relation slave namenode
+juju::lib::add_relation plugin namenode
 
 #####################################################################
 #
@@ -184,3 +181,16 @@ case "${SCHEDULER}" in
 	;;
 esac
 
+STATUS=""
+# Now wait until Slave service is up & running to deploy CUDA
+until [ "${STATUS}" = "active" ]
+do 
+	bash::lib::log debug Waiting for Slaves to be up & running
+	STATUS=$(juju status --format=json | jq '.services.slave."service-status".current' | tr -d \")
+	sleep 30
+done
+
+# # Need to add a timer for that to make sure Hadoop is done when rebooting
+juju::lib::add_relation cuda slave
+
+# OK!! 
