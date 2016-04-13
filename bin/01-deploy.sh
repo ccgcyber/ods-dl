@@ -64,65 +64,123 @@ case "${ENABLE_GPU}" in
 	;;
 esac
 
-#####################################################################
-#
-# Prepare for GPU
-#
-#####################################################################
+# #####################################################################
+# #
+# # Prepare for GPU
+# #
+# #####################################################################
 
-juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
-	bash::lib::log info Successfully added CUDA to the environment || \
-	bash::lib::die Could not add CUDA. Please build the charm locally. 
+# juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
+# 	bash::lib::log info Successfully added CUDA to the environment || \
+# 	bash::lib::die Could not add CUDA. Please build the charm locally. 
 
-#####################################################################
-#
-# Deploy Apache Hadoop
-#
-#####################################################################
-## Deploy HDFS Master
-juju::lib::deploy cs:trusty/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
+# #####################################################################
+# #
+# # Deploy Apache Hadoop
+# #
+# #####################################################################
+# ## Deploy HDFS Master
+# juju::lib::deploy cs:trusty/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
 
-## Deploy YARN 
-juju::lib::deploy cs:trusty/apache-hadoop-resourcemanager-1 resourcemanager "mem=2G cpu-cores=2"
 
-## Deploy Compute slaves
-juju::lib::deploy cs:trusty/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
+# ## Deploy Compute slaves
+# juju::lib::deploy cs:trusty/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
 
-juju::lib::add_unit slave 2
+# juju::lib::add_unit slave 2
 
-## Deploy Hadoop Plugin
-juju::lib::deploy cs:trusty/apache-hadoop-plugin-13 plugin
+# ## Deploy Hadoop Plugin
+# juju::lib::deploy cs:trusty/apache-hadoop-plugin-13 plugin
 
-## Manage Relations
-juju::lib::add_relation resourcemanager namenode
-juju::lib::add_relation slave resourcemanager
-juju::lib::add_relation slave namenode
-juju::lib::add_relation plugin resourcemanager
-juju::lib::add_relation plugin namenode
+# ## Manage Relations
+# juju::lib::add_relation slave namenode
+# juju::lib::add_relation plugin namenode
+
+# # # Need to add a timer for that to make sure Hadoop is done when rebooting
+# # juju::lib::add_relation cuda slave
 
 #####################################################################
 #
-# Deploy Apache Spark 
+# Deploy Scheduler
 #
 #####################################################################
+case "${SCHEDULER}" in
+	"yarn" )
+		## Deploy YARN 
+		bash::lib::log info "Using YARN as the default Scheduler"
+		SCHEDULER_SERVICE="resourcemanager"
+		juju::lib::deploy cs:trusty/apache-hadoop-resourcemanager-1 "${SCHEDULER_SERVICE}" "mem=2G cpu-cores=2"
+		juju::lib::add_relation namenode "${SCHEDULER_SERVICE}" 
+		juju::lib::add_relation slave "${SCHEDULER_SERVICE}"
+		juju::lib::add_relation plugin "${SCHEDULER_SERVICE}"
+	
+		#####################################################################
+		#
+		# Deploy Apache Spark 
+		#
+		#####################################################################
 
-# Services
-juju::lib::deploy cs:trusty/apache-spark-7 spark "mem=2G cpu-cores=2"
+		# Services
+		juju::lib::deploy cs:trusty/apache-spark-7 spark "mem=2G cpu-cores=2"
 
-# Relations
-juju::lib::add_relation spark plugin
+		# Relations
+		juju::lib::add_relation spark plugin
+	;;
+	* )
+		# Deploy Mesos
+		bash::lib::log info "Using Mesos as the default scheduler"
+		SCHEDULER_SERVICE="mesos-master"
 
-#####################################################################
-#
-# Deploy Spark Notebook
-#
-#####################################################################
+		juju::lib::deploy local:trusty/mesos-master "${SCHEDULER_SERVICE}" "${CONSTRAINTS}"
 
-# # Services
-# juju::lib::deploy spark-notebook-1 spark-notebook
+		# # Using Mesos Slave "classic charm"
+		# for UNIT in $(juju status --format=json | jq '.services.gpu2.units[].machine' | tr -d \" | sort )
+		# do
+		# 	juju::lib::deploy_to "local:trusty/mesos-slave" "mesos-slave-${UNIT}" "${UNIT}"
+		# 	juju::lib::add_relation "mesos-slave-${UNIT}" "mesos-master"
+		# done
 
-# # Relations
-# juju::lib::add_relation spark spark-notebook
+		# Using Mesos Slave in the subordinate format
+		juju deploy local:trusty/mesos-slave mesos-slave 2>/dev/null 1>/dev/null && \
+			bash::lib::log info Successfully added mesos-slave to the environment || \
+			bash::lib::die Could not add mesos-slave. Please build the charm locally. 
+		
+		# Relations
+		juju::lib::add-relation mesos-slave:juju-info slave:juju-info
+		juju::lib::add-relation mesos-slave:"${SCHEDULER_SERVICE}" "${SCHEDULER_SERVICE}":"${SCHEDULER_SERVICE}"
+		# # Need to add a timer for that to make sure Hadoop is done when rebooting
+		# juju::lib::add-relation cuda "${SCHEDULER_SERVICE}"
 
-# # Exposition
-# juju::lib::expose spark-notebook
+		#####################################################################
+		#
+		# Deploy DL4j
+		#
+		#####################################################################
+
+		# Services
+		juju deploy local:trusty/deeplearning4j dl4j 2>/dev/null 1>/dev/null && \
+			bash::lib::log info Successfully added DL4j to the environment || \
+			bash::lib::die Could not add DL4j. Please build the charm locally. 
+		
+		# Relations
+		juju::lib::add_relation "${SCHEDULER_SERVICE}" dl4j
+
+		#####################################################################
+		#
+		# Deploy Spark Notebook
+		#
+		#####################################################################
+
+		# Services
+		juju deploy local:trusty/datafellas-notebook datafellas-notebook 2>/dev/null 1>/dev/null && \
+			bash::lib::log info Successfully added Data Fellas to the environment || \
+			bash::lib::die Could not add Data Fellas. Please build the charm locally. 
+
+		# Relations
+		juju::lib::add_relation "${SCHEDULER_SERVICE}" datafellas-notebook
+
+		# Exposition
+		juju::lib::expose datafellas-notebook
+
+	;;
+esac
+

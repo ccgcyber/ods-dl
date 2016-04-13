@@ -28,3 +28,9 @@ LOG_STORAGE=200
 # Use GPU machines (0 or 1, defaults to 0)
 # For now, Azure doesn't yet have the GPU instances so can't have ENABLE_GPU=1
 ENABLE_GPU=0
+
+# Scheduler type ("mesos" or "yarn", defaults to "mesos")
+SCHEDULER="mesos"
+
+# Dataset: path to dataset to upload to HDFS
+DATASET="/path/to/tar.gz"
