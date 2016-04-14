@@ -30,7 +30,8 @@ done
 bash::lib::log debug Validating dependencies
 bash::lib::ensure_cmd_or_install_package_apt jq jq
 bash::lib::ensure_cmd_or_install_package_apt awk awk
-bash::lib::ensure_cmd_or_install_package_apt juju juju juju-core juju-deployer juju-quickstart python-jujuclient charm-tools
+bash::lib::ensure_cmd_or_install_package_apt juju juju juju-core juju-deployer juju-quickstart python-jujuclient 
+bash::lib::ensure_cmd_or_install_package_apt charm charm-tools
 bash::lib::ensure_cmd_or_install_package_apt bzr bzr
 
 # Switching to project
@@ -68,6 +69,7 @@ then
 	bash::lib::log info Creating folder "${HOME}/charms" to store local charms
 	[ -d "~/charms" ] || mkdir -p "${HOME}/charms"
 	[ -d "~/charms/trusty" ] || mkdir -p "${HOME}/charms/trusty"
+	[ -d "~/charms/xenial" ] || mkdir -p "${HOME}/charms/xenial"
 
 	bash::lib::log info Creating JUJU_REPOSITORY="${HOME}/charms" environment variable
 	export JUJU_REPOSITORY="${HOME}/charms"
@@ -90,22 +92,23 @@ git clone https://github.com/SaMnCo/layer-nvidia-cuda.git "${LAYER_PATH}/cuda" 2
 	&& bash::lib::log info "Successfully cloned cudacuda charm" \
 	|| bash::die "Could not clone cuda charm"
 
-bzr branch lp:~samuel-cozannet/charms/trusty/mesos-slave/trunk "${JUJU_REPOSITORY}/charms/mesos-slave" 2>/dev/null 1>/dev/null \
+bzr branch lp:~samuel-cozannet/charms/trusty/mesos-slave/trunk "${JUJU_REPOSITORY}/trusty/mesos-slave" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Mesos Slave charm" \
 	|| bash::die info "Could not clone Mesos Slave charm"
-bzr branch lp:~frbayart/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/charms/mesos-master" 2>/dev/null 1>/dev/null \
+bzr branch lp:~frbayart/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/trusty/mesos-master" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Master charm charm" \
 	|| bash::die "Could not clone Mesos Master charm"
-bzr branch lp:~frbayart/charms/trusty/datafellas-notebook/trunk "${JUJU_REPOSITORY}/charms/datafellas-notebook" 2>/dev/null 1>/dev/null \
+bzr branch lp:~frbayart/charms/trusty/datafellas-notebook/trunk "${JUJU_REPOSITORY}/trusty/datafellas-notebook" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Spark Notebook charm" \
 	|| bash::lib::die "Could not clone Spark Notebook charm"
 
 for CHARM in deeplearning4j cuda
 do
-	cd "${LAYER_PATH}/${CHARM}" 2>/dev/null 1>/dev/null \
+	cd "${LAYER_PATH}/${CHARM}" 
+	charm build 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully built ${CHARM} charm" \
 	|| bash::die "Could not build ${CHARM} charm"
-	charm build 
+	cd -
 done
 
 bash::lib::log info "Bootstrapping complete. You can now move to the next step, Deployment"

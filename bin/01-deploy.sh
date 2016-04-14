@@ -46,17 +46,32 @@ case "${ENABLE_GPU}" in
 				bash::lib::log info Using GPU for this deployment
 				CONSTRAINTS="instance-type=g2.2xlarge root-disk=${LOG_STORAGE}G"
 				bash::lib::log info Using constraints ${CONSTRAINTS} for this deployment
+
+				juju deploy local:${DEFAULT_SERIES}/cuda 2>/dev/null 1>/dev/null && \
+					bash::lib::log info Successfully added CUDA to the environment || \
+					bash::lib::die Could not add CUDA. Please build the charm locally. 
 				;;
 			"azure" ) 
 				bash::lib::log warn GPU not enabled on Azure, switching back to no GPU
 				ENABLE_GPU=0
 				CONSTRAINTS="mem=4G cpu-cores=2 root-disk=${LOG_STORAGE}G"
 				bash::lib::log warn Using constraints ${CONSTRAINTS} for this deployment
+
+				juju deploy local:${DEFAULT_SERIES}/cuda 2>/dev/null 1>/dev/null && \
+					bash::lib::log info Successfully added CUDA to the environment || \
+					bash::lib::die Could not add CUDA. Please build the charm locally. 
 				;;
 			"local" )
 				bash::lib::log warn GPU not enabled on LXD
-				ENABLE_GPU=0
+				bash::lib::ensure_cmd_or_install_package_apt lxc lxd 
+				for CHAR_DEVICE in $(ls /dev | grep nvidia)
+				do
+					lxc profile device add docker ${CHAR_DEVICE} unix-char path=/dev/${CHAR_DEVICE}
+				done 
 				CONSTRAINTS="mem=4G cpu-cores=2 root-disk=${LOG_STORAGE}G"
+
+				# NOTE: There is no need to deploy the CUDA charm as all units will have the GPU
+				# 		enabled by default via LXD sharing the char device. 
 				;;
 		esac
 	;;
@@ -66,30 +81,20 @@ esac
 
 #####################################################################
 #
-# Prepare for GPU
-#
-#####################################################################
-
-juju deploy local:trusty/cuda 2>/dev/null 1>/dev/null && \
-	bash::lib::log info Successfully added CUDA to the environment || \
-	bash::lib::die Could not add CUDA. Please build the charm locally. 
-
-#####################################################################
-#
 # Deploy Apache Hadoop
 #
 #####################################################################
 ## Deploy HDFS Master
-juju::lib::deploy cs:trusty/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
+juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
 
 
 ## Deploy Compute slaves
-juju::lib::deploy cs:trusty/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
+juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
 
 juju::lib::add_unit slave 2
 
 ## Deploy Hadoop Plugin
-juju::lib::deploy cs:trusty/apache-hadoop-plugin-13 plugin
+juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-plugin-13 plugin
 
 ## Manage Relations
 juju::lib::add_relation slave namenode
@@ -105,7 +110,7 @@ case "${SCHEDULER}" in
 		## Deploy YARN 
 		bash::lib::log info "Using YARN as the default Scheduler"
 		SCHEDULER_SERVICE="resourcemanager"
-		juju::lib::deploy cs:trusty/apache-hadoop-resourcemanager-1 "${SCHEDULER_SERVICE}" "mem=2G cpu-cores=2"
+		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-resourcemanager-1 "${SCHEDULER_SERVICE}" "mem=2G cpu-cores=2"
 		juju::lib::add_relation namenode "${SCHEDULER_SERVICE}" 
 		juju::lib::add_relation slave "${SCHEDULER_SERVICE}"
 		juju::lib::add_relation plugin "${SCHEDULER_SERVICE}"
@@ -117,7 +122,7 @@ case "${SCHEDULER}" in
 		#####################################################################
 
 		# Services
-		juju::lib::deploy cs:trusty/apache-spark-7 spark "mem=2G cpu-cores=2"
+		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-spark-7 spark "mem=2G cpu-cores=2"
 
 		# Relations
 		juju::lib::add_relation spark plugin
@@ -127,17 +132,17 @@ case "${SCHEDULER}" in
 		bash::lib::log info "Using Mesos as the default scheduler"
 		SCHEDULER_SERVICE="mesos-master"
 
-		juju::lib::deploy local:trusty/mesos-master "${SCHEDULER_SERVICE}" "${CONSTRAINTS}"
+		juju::lib::deploy local:${DEFAULT_SERIES}/mesos-master "${SCHEDULER_SERVICE}" "${CONSTRAINTS}"
 
 		# # Using Mesos Slave "classic charm"
 		# for UNIT in $(juju status --format=json | jq '.services.gpu2.units[].machine' | tr -d \" | sort )
 		# do
-		# 	juju::lib::deploy_to "local:trusty/mesos-slave" "mesos-slave-${UNIT}" "${UNIT}"
+		# 	juju::lib::deploy_to "local:${DEFAULT_SERIES}/mesos-slave" "mesos-slave-${UNIT}" "${UNIT}"
 		# 	juju::lib::add_relation "mesos-slave-${UNIT}" "mesos-master"
 		# done
 
 		# Using Mesos Slave in the subordinate format
-		juju deploy local:trusty/mesos-slave mesos-slave 2>/dev/null 1>/dev/null && \
+		juju deploy local:${DEFAULT_SERIES}/mesos-slave mesos-slave 2>/dev/null 1>/dev/null && \
 			bash::lib::log info Successfully added mesos-slave to the environment || \
 			bash::lib::die Could not add mesos-slave. Please build the charm locally. 
 		
@@ -154,7 +159,7 @@ case "${SCHEDULER}" in
 		#####################################################################
 
 		# Services
-		juju deploy local:trusty/deeplearning4j dl4j 2>/dev/null 1>/dev/null && \
+		juju deploy local:${DEFAULT_SERIES}/deeplearning4j dl4j 2>/dev/null 1>/dev/null && \
 			bash::lib::log info Successfully added DL4j to the environment || \
 			bash::lib::die Could not add DL4j. Please build the charm locally. 
 		
@@ -168,7 +173,7 @@ case "${SCHEDULER}" in
 		#####################################################################
 
 		# Services
-		juju deploy local:trusty/datafellas-notebook datafellas-notebook 2>/dev/null 1>/dev/null && \
+		juju deploy local:${DEFAULT_SERIES}/datafellas-notebook datafellas-notebook 2>/dev/null 1>/dev/null && \
 			bash::lib::log info Successfully added Data Fellas to the environment || \
 			bash::lib::die Could not add Data Fellas. Please build the charm locally. 
 
@@ -192,5 +197,16 @@ done
 
 # # Need to add a timer for that to make sure Hadoop is done when rebooting
 juju::lib::add_relation cuda slave
+
+STATUS=""
+# Now wait until Slave service is up & running to deploy CUDA
+until [ "${STATUS}" = "active" ]
+do 
+	bash::lib::log debug Waiting for Mesos Master to be up & running
+	STATUS=$(juju status --format=json | jq '.services."mesos-master"."service-status".current' | tr -d \")
+	sleep 30
+done
+
+juju::lib::add_relation deeplearning4j mesos-master
 
 # OK!! 

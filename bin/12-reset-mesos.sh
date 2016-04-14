@@ -37,10 +37,6 @@ juju::lib::switchenv "${PROJECT_ID}"
 #
 #####################################################################
 
-for machine in $(juju::lib::get_service_ip_addresses); do
-	for identity in $(find "${MYDIR}/../var/ssh" -name "*.pub"); do
-		cat "${identity}" | ssh-copy-id -o StrictHostKeyChecking=no ubuntu@"${machine}" 2>/dev/null 1>/dev/null \
-			&& bash::lib::log info "Successfully imported identity ${identity} on ${machine}" \
-			|| bash::lib::log warn "Could not import identity ${identity} on ${machine}"
-	done
-done
+juju destroy-relation mesos-slave mesos-master
+sleep 10
+juju::lib::add_relation mesos-slave mesos-master
