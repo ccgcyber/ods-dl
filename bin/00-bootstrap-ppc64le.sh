@@ -103,7 +103,7 @@ done
 juju::lib::switchenv "${PROJECT_ID}" 
 
 # Bootstrapping project 
-juju bootstrap deeplearning lxd 2>/dev/null \
+juju bootstrap deeplearning lxd --upload-tools 2>/dev/null \
   && bash::lib::log debug Succesfully bootstrapped "${PROJECT_ID}" \
   || bash::lib::log info "${PROJECT_ID}" already bootstrapped
 
@@ -126,22 +126,30 @@ EOF
 chmod +x /etc/profile.d/juju.sh 
 
 bash::lib::log info Cloning repos to get access to local charms
-git clone https://github.com/SaMnCo/layer-skymind-dl4j.git "${LAYER_PATH}/deeplearning4j" 2>/dev/null 1>/dev/null \
+[ -d "${LAYER_PATH}/deeplearning4j" ] || { git clone https://github.com/SaMnCo/layer-skymind-dl4j.git "${LAYER_PATH}/deeplearning4j" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned deeplearning4j charm" \
-	|| bash::die "Could not clone deeplearning4j charm"
-git clone https://github.com/SaMnCo/layer-nvidia-cuda.git "${LAYER_PATH}/cuda" 2>/dev/null 1>/dev/null \
-	&& bash::lib::log info "Successfully cloned cudacuda charm" \
-	|| bash::die "Could not clone cuda charm"
+	|| bash::die "Could not clone deeplearning4j charm" ; } \
+&& { cd "${LAYER_PATH}/deeplearning4j" ; git pull origin master ; }
 
-bzr branch lp:~samuel-cozannet/charms/trusty/mesos-slave/trunk "${JUJU_REPOSITORY}/trusty/mesos-slave" 2>/dev/null 1>/dev/null \
+[ -d "${LAYER_PATH}/cuda" ] || { git clone https://github.com/SaMnCo/layer-nvidia-cuda.git "${LAYER_PATH}/cuda" 2>/dev/null 1>/dev/null \
+	&& bash::lib::log info "Successfully cloned cudacuda charm" \
+	|| bash::die "Could not clone cuda charm" ; } \
+&& { cd "${LAYER_PATH}/cuda" ; git pull origin master ; }
+
+[ -d "${LAYER_PATH}/cuda" ] || { bzr branch lp:~samuel-cozannet/charms/trusty/mesos-slave/trunk "${JUJU_REPOSITORY}/trusty/mesos-slave" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Mesos Slave charm" \
-	|| bash::die info "Could not clone Mesos Slave charm"
-bzr branch lp:~frbayart/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/trusty/mesos-master" 2>/dev/null 1>/dev/null \
+	|| bash::die info "Could not clone Mesos Slave charm" ; } \
+&& { cd "${LAYER_PATH}/cuda" ; bzr pull ; }
+
+[ -d "${LAYER_PATH}/cuda" ] || { bzr branch lp:~samuel-cozannet/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/trusty/mesos-master" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Master charm charm" \
-	|| bash::die "Could not clone Mesos Master charm"
-bzr branch lp:~frbayart/charms/trusty/datafellas-notebook/trunk "${JUJU_REPOSITORY}/trusty/datafellas-notebook" 2>/dev/null 1>/dev/null \
+	|| bash::die "Could not clone Mesos Master charm" ; } \
+&& { cd "${LAYER_PATH}/cuda" ; bzr pull ; }
+
+[ -d "${LAYER_PATH}/cuda" ] || { bzr branch lp:~frbayart/charms/trusty/datafellas-notebook/trunk "${JUJU_REPOSITORY}/trusty/datafellas-notebook" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Spark Notebook charm" \
-	|| bash::lib::die "Could not clone Spark Notebook charm"
+	|| bash::lib::die "Could not clone Spark Notebook charm" ; } \
+&& { cd "${LAYER_PATH}/cuda" ; bzr pull ; }
 
 for CHARM in deeplearning4j cuda
 do
