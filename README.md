@@ -42,12 +42,12 @@ This project is also about sharing an example of architecture providing:
 
 So something like 
 
-[[https://github.com/SaMnCo/ods-dl/blob/master/docs/software-pieces.png|alt=software-pieces]]
+![this](https://github.com/SaMnCo/ods-dl/blob/master/docs/software-pieces.png)
 
 The whole system is modelled via [Juju](https://jujucharms.com), Canonical's Application Modelling Framework. 
 The deployment is run on GPU enabled machines, either on AWS or on Bare Metal, on clusters or, with Juju 2.0, on LXD containers. The Juju model for this looks like: 
 
-[[https://github.com/SaMnCo/ods-dl/blob/master/docs/dl-bundle.png|alt=dl-bundle]]
+![this](https://github.com/SaMnCo/ods-dl/blob/master/docs/dl-bundle.png)
 
 This project will provide guidance about how you can deploy your own machine/deep learning stack at scale and do your own data analysis. We hope it will be useful for other universities and students to get their hands on classic big data infrastructure in just minutes. 
 
