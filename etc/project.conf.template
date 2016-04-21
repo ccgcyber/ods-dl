@@ -1,36 +1,53 @@
 #####################################################################
 #
-# Global Configuration for DPCS stack
+# Global Configuration File
 #
-# Notes: 
+# Notes: This is a very expensive setup, with GPU enabled machines
+#        On AWS, count ~250€/day for this setup
 # 
 # Maintainer: Samuel Cozannet <samuel.cozannet@canonical.com> 
 #
 #####################################################################
 
 # Cloud: set to aws, azure or local for local laptop deployment. Defaults to AWS. 
+#  - Local will attempt to deploy using the LXD provider, which required Xenial (16.04)
+#  - AWS will use GPU instances whenever possible
+#  - Azure will soon be able to use GPUs, but for now will go on CPU only
+# Other clouds that don't have GPUs on their roadmap are not yet added to this. 
 CLOUD_ID=aws
 
 # Project Settings: Enter the name of your Juju cloud settings here
-PROJECT_ID=ml
+# This is the name of your Juju model (formerly environment)
+PROJECT_ID=ENTER_PROJECT_NAME
 
 # Logging Settings: these are the settings for the deployment scripts
+# You can see the available levels in the file "syslog-levels". You can therefore
+# reduce the verbosity by going higher in the stack. 
 FACILITY="local0"
-LOGTAG="dpcs"
+LOGTAG="deepstack"
 MIN_LOG_LEVEL="debug"
 
-# Temporary files list
-TMP_FILES="tmp/dpcs"
+# Temporary files list: in case temporary files are created, they will be created in this 
+# folder. 
+TMP_FILES="tmp/deepstack"
 
-# Log Storage in GB
-LOG_STORAGE=200
+# Log Storage in GB: This will be used to size HDFS nodes. Defaults to 64. 
+LOG_STORAGE=64
 
-# Use GPU machines (0 or 1, defaults to 0)
+# Use GPU machines: 0 or 1, defaults to 0
 # For now, Azure doesn't yet have the GPU instances so can't have ENABLE_GPU=1
 ENABLE_GPU=0
 
 # Scheduler type ("mesos" or "yarn", defaults to "mesos")
+# Initially the solution used only YARN, but with time it appears Mesos is taking a good 
+# marketshare in this space, so we also made it available. Kudos to DataArt's team for 
+# bootstrapping Juju compliance. 
 SCHEDULER="mesos"
 
 # Dataset: path to dataset to upload to HDFS
-DATASET="/path/to/tar.gz"
+# If you intend to push a dataset to HDFS, store it on your local FS as a tgz file and
+# put the path here. 
+DATASET="PATH_TO_DATASET_TGZ"
+
+# Default Ubuntu Series: xenial or trusty. Other non-LTS types are not supported. 
+DEFAULT_SERIES="trusty"

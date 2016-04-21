@@ -95,7 +95,7 @@ git clone https://github.com/SaMnCo/layer-nvidia-cuda.git "${LAYER_PATH}/cuda" 2
 bzr branch lp:~samuel-cozannet/charms/trusty/mesos-slave/trunk "${JUJU_REPOSITORY}/trusty/mesos-slave" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Mesos Slave charm" \
 	|| bash::die info "Could not clone Mesos Slave charm"
-bzr branch lp:~frbayart/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/trusty/mesos-master" 2>/dev/null 1>/dev/null \
+bzr branch lp:~samuel-cozannet/charms/trusty/mesos-master/trunk "${JUJU_REPOSITORY}/trusty/mesos-master" 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully cloned Master charm charm" \
 	|| bash::die "Could not clone Mesos Master charm"
 bzr branch lp:~frbayart/charms/trusty/datafellas-notebook/trunk "${JUJU_REPOSITORY}/trusty/datafellas-notebook" 2>/dev/null 1>/dev/null \

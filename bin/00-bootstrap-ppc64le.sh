@@ -26,6 +26,9 @@ for file in $(find ${MYDIR}/../etc -name "${MYCONF}") $(find ${MYDIR}/../lib -na
 	sleep 1
 done 
 
+[ "${PROJECT_ID}" = "ENTER_PROJECT_NAME" ] && bash::lib::die PROJECT_ID not set. Please update etc/project.conf
+[ "${DATASET}" = "PATH_TO_DATASET_TGZ" ] && bash::lib::die PATH_TO_DATASET_TGZ not set. Please update etc/project.conf.
+
 # Check install of all dependencies
 bash::lib::log debug Validating dependencies
 bash::lib::ensure_cmd_or_install_package_apt jq jq
@@ -67,43 +70,48 @@ CUDA_VERSION="7.5"
 CUDA_SUB_VERSION="18"
 CUDA_PKG_VERSION="7-5"
 
-wget -C /tmp http://us.download.nvidia.com/Ubuntu/352.88/NVIDIA-Linux-ppc64le-352.88.run
-/tmp/NVIDIA-Linux-ppc64le-352.88.run -a --update -q -s --disable-nouveau
+wget -c -P /tmp "http://developer.download.nvidia.com/compute/cuda/7.5/Prod/local_installers/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb"
+dpkg -i /tmp/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb
 
-MD5="af735cee83d5c80f0b7b1f84146b4614"
-wget -c -P /tmp "http://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/Prod/local_installers/cuda-repo-ubuntu1404-${CUDA_PKG_VERSION}-local_${CUDA_VERSION}-${CUDA_SUB_VERSION}_$(arch).deb"
+apt-add-repository -y ppa:openjdk-r/ppa
+apt-add-repository -y ppa:jochenkemnade/openjdk-8
 
-# Install CUDA dependencies manually
-apt-get install -yqq \
-    openjdk-8-jre openjdk-8-jre-headless java-common \
-    ca-certificates default-jre-headless fonts-dejavu-extra \
-    freeglut3 freeglut3-dev \
-    libatk-wrapper-java libatk-wrapper-java-jni \
-    libdrm-dev libgl1-mesa-dev libglu1-mesa-dev libgnomevfs2-0 libgnomevfs2-common \
-    libice-dev libpthread-stubs0-dev libsctp1 libsm-dev libx11-dev \
-    libx11-doc libx11-xcb-dev libxau-dev libxcb-dri2-0-dev libxcb-dri3-dev \
-    libxcb-glx0-dev libxcb-present-dev libxcb-randr0-dev libxcb-render0-dev \
-    libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb1-dev \
-    libxdamage-dev libxdmcp-dev libxext-dev libxfixes-dev libxi-dev \
-    libxmu-dev libxmu-headers libxshmfence-dev libxt-dev libxxf86vm-dev \
-    x11proto-core-dev x11proto-damage-dev x11proto-dri2-dev x11proto-fixes-dev x11proto-gl-dev \
-    x11proto-kb-dev x11proto-xext-dev x11proto-xf86vidmode-dev x11proto-input-dev \
-    xorg-sgml-doctools xtrans-dev libgles2-mesa-dev \
-    lksctp-tools mesa-common-dev build-essential \
-    libopenblas-base libopenblas-dev
+apt-get update -yqq
 
-dpkg -i /tmp/cuda-repo-ubuntu1404-${CUDA_PKG_VERSION}-local_${CUDA_VERSION}-${CUDA_SUB_VERSION}_$(arch).deb
 # What this does is really copy all packages from CUDA into /var/cuda-repo-7-5-local
-for PACKAGE in cuda-core cuda-toolkit cuda cuda-nvrtc cuda-cusolver cuda-cublas cuda-cufft cuda-curand cuda-cusparse cuda-npp cuda-cudart
-do
-    dpkg -i /var/cuda-repo-${CUDA_PKG_VERSION}-local/${PACKAGE}-${CUDA_PKG_VERSION}_${CUDA_VERSION}-${CUDA_SUB_VERSION}_$(arch).deb
-done
+apt-get install -yqq --no-install-recommends --force-yes \
+    cuda-license-${CUDA_PKG_VERSION} \
+    cuda-misc-headers-${CUDA_PKG_VERSION} \
+    cuda-core-${CUDA_PKG_VERSION} \
+    cuda-cudart-${CUDA_PKG_VERSION} \
+    cuda-driver-dev-${CUDA_PKG_VERSION} \
+    cuda-cudart-dev-${CUDA_PKG_VERSION} \
+    cuda-command-line-tools-${CUDA_PKG_VERSION} \
+    cuda-nvrtc-${CUDA_PKG_VERSION} \
+    cuda-cusolver-${CUDA_PKG_VERSION} \
+    cuda-cublas-${CUDA_PKG_VERSION} \
+    cuda-cufft-${CUDA_PKG_VERSION} \
+    cuda-curand-${CUDA_PKG_VERSION} \
+    cuda-cusparse-${CUDA_PKG_VERSION} \
+    cuda-npp-${CUDA_PKG_VERSION} \
+    cuda-nvrtc-dev-${CUDA_PKG_VERSION} \
+    cuda-cusolver-dev-${CUDA_PKG_VERSION} \
+    cuda-cublas-dev-${CUDA_PKG_VERSION} \
+    cuda-cufft-dev-${CUDA_PKG_VERSION} \
+    cuda-curand-dev-${CUDA_PKG_VERSION} \
+    cuda-cusparse-dev-${CUDA_PKG_VERSION} \
+    cuda-npp-dev-${CUDA_PKG_VERSION} \
+    cuda-samples-${CUDA_PKG_VERSION} \
+    cuda-documentation-${CUDA_PKG_VERSION} \
+    cuda-visual-tools-${CUDA_PKG_VERSION} \
+    cuda-toolkit-${CUDA_PKG_VERSION} \
+    cuda
 
 # Switching to project
 juju::lib::switchenv "${PROJECT_ID}" 
 
 # Bootstrapping project 
-juju bootstrap deeplearning lxd --upload-tools 2>/dev/null \
+juju bootstrap "${PROJECT_ID}" lxd --upload-tools 2>/dev/null \
   && bash::lib::log debug Succesfully bootstrapped "${PROJECT_ID}" \
   || bash::lib::log info "${PROJECT_ID}" already bootstrapped
 
@@ -153,7 +161,8 @@ bash::lib::log info Cloning repos to get access to local charms
 
 for CHARM in deeplearning4j cuda
 do
-	cd "${LAYER_PATH}/${CHARM}" 2>/dev/null 1>/dev/null \
+	cd "${LAYER_PATH}/${CHARM}" 
+	charm build --force 2>/dev/null 1>/dev/null \
 	&& bash::lib::log info "Successfully built ${CHARM} charm" \
 	|| bash::die "Could not build ${CHARM} charm"
 	charm build 

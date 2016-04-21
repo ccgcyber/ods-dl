@@ -29,6 +29,7 @@ done
 # Check install of all dependencies
 bash::lib::log debug Validating dependencies
 bash::lib::ensure_cmd_or_install_package_apt git git-all
+bash::lib::ensure_cmd_or_install_package_apt jq jq
 
 # Switching to project 
 juju::lib::switchenv "${PROJECT_ID}" 
@@ -38,7 +39,7 @@ CONSTRAINTS=""
 case "${ENABLE_GPU}" in
 	"0" )
 		bash::lib::log info Not using GPU for this deployment
-		CONSTRAINTS="mem=4G cpu-cores=2 root-disk=${LOG_STORAGE}G"
+		CONSTRAINTS="mem=16G cpu-cores=4 root-disk=${LOG_STORAGE}G"
 	;;
 	"1" )
 		case "${CLOUD_ID}" in 
@@ -54,7 +55,7 @@ case "${ENABLE_GPU}" in
 			"azure" ) 
 				bash::lib::log warn GPU not enabled on Azure, switching back to no GPU
 				ENABLE_GPU=0
-				CONSTRAINTS="mem=4G cpu-cores=2 root-disk=${LOG_STORAGE}G"
+				CONSTRAINTS="mem=16G cpu-cores=4 root-disk=${LOG_STORAGE}G"
 				bash::lib::log warn Using constraints ${CONSTRAINTS} for this deployment
 
 				juju deploy local:${DEFAULT_SERIES}/cuda 2>/dev/null 1>/dev/null && \
@@ -62,17 +63,22 @@ case "${ENABLE_GPU}" in
 					bash::lib::die Could not add CUDA. Please build the charm locally. 
 				;;
 			"local" )
-				bash::lib::log warn GPU not enabled on LXD
 				bash::lib::ensure_cmd_or_install_package_apt lxc lxd 
 				for CHAR_DEVICE in $(ls /dev | grep nvidia)
 				do
 					lxc profile device add docker ${CHAR_DEVICE} unix-char path=/dev/${CHAR_DEVICE}
 				done 
-				CONSTRAINTS="mem=4G cpu-cores=2 root-disk=${LOG_STORAGE}G"
-
+				case "$(arch)" in 
+					"ppc64le" )
+						CONSTRAINTS="mem=8G cpu-cores=8 root-disk=32G"
+					;;
+					* )
+						CONSTRAINTS="mem=4G cpu-cores=2 root-disk=32G"
+					;;
+				esac
 				# NOTE: There is no need to deploy the CUDA charm as all units will have the GPU
 				# 		enabled by default via LXD sharing the char device. 
-				;;
+			;;
 		esac
 	;;
 	* )
@@ -85,8 +91,7 @@ esac
 #
 #####################################################################
 ## Deploy HDFS Master
-juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-namenode-1 namenode "mem=4G cpu-cores=2 root-disk=32G"
-
+juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-namenode-1 namenode "${CONSTRAINTS}"
 
 ## Deploy Compute slaves
 juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-slave-1 slave "${CONSTRAINTS}"
@@ -110,22 +115,18 @@ case "${SCHEDULER}" in
 		## Deploy YARN 
 		bash::lib::log info "Using YARN as the default Scheduler"
 		SCHEDULER_SERVICE="resourcemanager"
-		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-resourcemanager-1 "${SCHEDULER_SERVICE}" "mem=2G cpu-cores=2"
+		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-resourcemanager-1 "${SCHEDULER_SERVICE}" "${CONSTRAINTS}"
 		juju::lib::add_relation namenode "${SCHEDULER_SERVICE}" 
 		juju::lib::add_relation slave "${SCHEDULER_SERVICE}"
 		juju::lib::add_relation plugin "${SCHEDULER_SERVICE}"
-	
+
 		#####################################################################
 		#
-		# Deploy Apache Spark 
+		# Deploy Apache Spark
 		#
 		#####################################################################
-
-		# Services
-		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-spark-7 spark "mem=2G cpu-cores=2"
-
-		# Relations
-		juju::lib::add_relation spark plugin
+		juju::lib::deploy cs:${DEFAULT_SERIES}/apache-spark-7 spark "${CONSTRAINTS}"
+		juju::lib::add_relation plugin spark
 	;;
 	* )
 		# Deploy Mesos
@@ -133,6 +134,8 @@ case "${SCHEDULER}" in
 		SCHEDULER_SERVICE="mesos-master"
 
 		juju::lib::deploy local:${DEFAULT_SERIES}/mesos-master "${SCHEDULER_SERVICE}" "${CONSTRAINTS}"
+
+		juju::lib::deploy mesos-master		
 
 		# # Using Mesos Slave "classic charm"
 		# for UNIT in $(juju status --format=json | jq '.services.gpu2.units[].machine' | tr -d \" | sort )
@@ -186,6 +189,15 @@ case "${SCHEDULER}" in
 	;;
 esac
 
+#####################################################################
+#
+# Deploy Apache Spark in Standalone for other apps
+#
+#####################################################################
+juju::lib::deploy cs:~bigdata-dev/${DEFAULT_SERIES}/apache-spark-73 spark-standalone "${CONSTRAINTS}"
+juju::lib::add_relation cuda spark-standalone
+juju::lib::add_relation dl4j spark-standalone
+
 STATUS=""
 # Now wait until Slave service is up & running to deploy CUDA
 until [ "${STATUS}" = "active" ]
@@ -206,7 +218,3 @@ do
 	STATUS=$(juju status --format=json | jq '.services."mesos-master"."service-status".current' | tr -d \")
 	sleep 30
 done
-
-juju::lib::add_relation deeplearning4j mesos-master
-
-# OK!! 
