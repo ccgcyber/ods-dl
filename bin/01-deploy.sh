@@ -64,10 +64,12 @@ case "${ENABLE_GPU}" in
 				;;
 			"local" )
 				bash::lib::ensure_cmd_or_install_package_apt lxc lxd 
-				for CHAR_DEVICE in $(ls /dev | grep nvidia)
+				lxc profile create default-gpu
+				for CHAR_DEVICE in $(ls /dev/nvidia* )
 				do
-					lxc profile device add docker ${CHAR_DEVICE} unix-char path=/dev/${CHAR_DEVICE}
+					lxc profile device add default-gpu ${CHAR_DEVICE} unix-char path=${CHAR_DEVICE}
 				done 
+				lxc profile device add default-gpu eth0 nic nictype=bridged parent=lxdbr0 name=eth0
 				case "$(arch)" in 
 					"ppc64le" )
 						CONSTRAINTS="mem=8G cpu-cores=8 root-disk=32G"
@@ -104,6 +106,9 @@ juju::lib::deploy cs:${DEFAULT_SERIES}/apache-hadoop-plugin-13 plugin
 ## Manage Relations
 juju::lib::add_relation slave namenode
 juju::lib::add_relation plugin namenode
+
+# # Need to add a timer for that to make sure Hadoop is done when rebooting
+juju::lib::add_relation cuda slave
 
 #####################################################################
 #
@@ -191,7 +196,7 @@ esac
 
 #####################################################################
 #
-# Deploy Apache Spark in Standalone for other apps
+# Deploy Apache Spark in Standalone for NIDS
 #
 #####################################################################
 juju::lib::deploy cs:~bigdata-dev/${DEFAULT_SERIES}/apache-spark-73 spark-standalone "${CONSTRAINTS}"
@@ -206,9 +211,6 @@ do
 	STATUS=$(juju status --format=json | jq '.services.slave."service-status".current' | tr -d \")
 	sleep 30
 done
-
-# # Need to add a timer for that to make sure Hadoop is done when rebooting
-juju::lib::add_relation cuda slave
 
 STATUS=""
 # Now wait until Slave service is up & running to deploy CUDA
