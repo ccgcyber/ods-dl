@@ -60,7 +60,7 @@ This project will provide guidance about how you can deploy your own machine/dee
 
 Once you have a model, you'd want to use it. While in development, you'd probably want to do that on your machine, systems in production are usually slightly different to say the least. So you'd also want to build something that allows you to see what happens for the end users. 
 
-Here we'll take a simple example, and see how we can  deploy a Spark Application in a separate cluster. 
+Here we'll take a simple example, and see how we can  deploy a Spark Application in a separate cluster (TBD)
 
 ## Use Cases
 
@@ -123,6 +123,50 @@ TBD
 ### Image Recognition
 
 TBD
+
+# Roadmap
+
+This is very much a work in progress, and we have a lot of ideas to push it further. Some ideas for the future
+
+## Ingest Pipeline
+### Log Pipeline
+
+In our example, we are using HDFS files for the training. That means there is an out of band data cleaning & ingest process. As far as Juju goes, because of the relations that are created between services, it is very easy to build intelligent charms for monitoring & logging agents. Suddenly, they auto-integrate with the underlying app they are supposed to monitor. 
+
+The idea is to use fluentd, the open source tool used by Google in GCP and supported by Treasure Data, and wrap it in a charm that will auto-adapt to the unit it runs on. If the unit runs OpenStack Nova, it will collect and serialize Nova logs. If it's a RabbitMQ node, it will collect the proper information. And so on and so on. 
+
+Standardizing logs outputed by applications powered by Juju will help us create generic, reusable, repeatable ingest pipelines not only for OpenStack, our primary use case, but also for any big software. 
+
+### Metric Pipeline
+
+For now we have only looked at logs, but we intend to add metrology to the mix as well. Fortunately, InfluxDB has recently announced a Spark API. They are also native in Mesos. 
+The idea here is also to make intelligent charms, so the Telegraph agent adapts to the underlying workload. This way, we'll have also a generic pipeline for metrics on Juju, and will be able to train on this dataset as well. 
+
+### Media Pipeline
+
+This is a little trickier, but our vision is to create classic entry points for images, sound, video, other text... We are open to suggestions in that space. Current assumption is to base our work on Kafka, then offer http endpoints to offer scale out interfaces. 
+
+## Training to production 
+
+This project really focused on the training part for now. The output of the process is simply a file, that represents the pre-trained model, and more or less looks like a big CSV file. 
+
+Our vision is to add another charm, that will push this pre-trained model to some endpoints like S3, NFS or just an HTTP server. 
+
+Models evolve over time, as you continue training over time. So from time to time, they will be updated. 
+
+Then agents running the models will be able to subscribe to this file, and update themselves a little bit like an antivirus would do. 
+
+## DC/OS
+
+So right now we've been using Mesos and Marathon 0.29 as the management layer for Spark workloads. But now that Mesosphere has open sourced the full DC/OS experience, we look forward to using that. Work in progress with our friends at Spicule and Mesosphere. 
+
+## Additional Power Optimizations
+
+The IBM Research & Development teams have developed a series of improvements in a layer called Ego
+
+
+
+
 
 # Usage
 ## Installing Juju
