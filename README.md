@@ -45,7 +45,12 @@ So something like
 ![this](https://github.com/SaMnCo/ods-dl/blob/master/docs/software-pieces.png)
 
 The whole system is modelled via [Juju](https://jujucharms.com), Canonical's Application Modelling Framework. 
-The deployment is run on GPU enabled machines, either on AWS or on Bare Metal, on clusters or, with Juju 2.0, on LXD containers. The Juju model for this looks like: 
+The deployment is run on GPU enabled machines, either on AWS or on Bare Metal, on clusters or, with Juju 2.0, on LXD containers. 
+We've been ourselves using IBM Power architectures for our deployment: 
+
+![power](https://github.com/SaMnCo/ods-dl/blob/master/docs/openpower-logo.jpg)
+
+The Juju model for this looks like: 
 
 ![this](https://github.com/SaMnCo/ods-dl/blob/master/docs/dl-bundle.png)
 
